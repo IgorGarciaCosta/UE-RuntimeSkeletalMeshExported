@@ -1,6 +1,6 @@
-#include "RuntimeMeshExporterComponent.h"
+ï»¿#include "RuntimeMeshExporterComponent.h"
 
-/* --- Includes específicos ---------------------------------------- */
+/* --- Includes especÃ­ficos ---------------------------------------- */
 #include "Components/SkeletalMeshComponent.h"
 #include "Rendering/SkeletalMeshRenderData.h"
 #include "Rendering/SkeletalMeshLODRenderData.h"
@@ -11,6 +11,7 @@
 #include "Misc/Paths.h"
 #include "HAL/FileManager.h"
 #include "Logging/LogMacros.h"
+#include "../../../../../Intermediate/ProjectFiles/RuntimeMeshExporterHelpers.h"
 
 /*------------------------------------------------------------------*/
 URuntimeMeshExporterComponent::URuntimeMeshExporterComponent()
@@ -24,24 +25,31 @@ void URuntimeMeshExporterComponent::BeginPlay()
 }
 
 /*------------------------------------------------------------------*/
-void URuntimeMeshExporterComponent::ExportToOBJ(
-	USkeletalMeshComponent* SkeletalMeshComp,
-	const FString& DirectoryPath)
+void URuntimeMeshExporterComponent::ExportToOBJ(USkeletalMeshComponent* SkeletalMeshComp)
 {
-	/* -- 0) Validações --------------------------------------------- */
+	/* ---------- 0) ValidaÃ§Ãµes ------------------------------------ */
 	if (!SkeletalMeshComp || !SkeletalMeshComp->GetSkinnedAsset())
 	{
-		UE_LOG(LogTemp, Warning, TEXT("[RME] SkeletalMeshComponent inválido."));
+		UE_LOG(LogTemp, Warning, TEXT("[RME] SkeletalMeshComponent invÃ¡lido."));
 		return;
 	}
-	if (!SkeletalMeshComp->MeshObject)
+	if (!SkeletalMeshComp->MeshObject)        // ainda nÃ£o foi renderizado â‰¥1 frame
 	{
 		UE_LOG(LogTemp, Warning,
-			TEXT("[RME] MeshObject ainda não criado; aguarde um frame."));
+			TEXT("[RME] MeshObject ainda nÃ£o criado; aguarde um frame."));
 		return;
 	}
 
-	/* -- 1) Render data (LOD0) ------------------------------------- */
+	/* ---------- 1) Pasta Downloads -------------------------------- */
+	FString DownloadDir = RMEHelpers::GetDownloadsDirectory();
+
+	if (!IFileManager::Get().DirectoryExists(*DownloadDir))
+	{
+		DownloadDir = FPaths::ProjectSavedDir();        // fallback
+	}
+	IFileManager::Get().MakeDirectory(*DownloadDir, /*Tree*/ true);
+
+	/* ---------- 2) Render data (LOD0) ----------------------------- */
 	const FSkeletalMeshRenderData* RenderData =
 		SkeletalMeshComp->GetSkeletalMeshRenderData();
 	if (!RenderData || RenderData->LODRenderData.IsEmpty())
@@ -51,40 +59,37 @@ void URuntimeMeshExporterComponent::ExportToOBJ(
 	}
 	const FSkeletalMeshLODRenderData& LOD = RenderData->LODRenderData[0];
 
-	/* -- 2) Vertex positions skinned ------------------------------- */
+	/* ---------- 3) VÃ©rtices skinados ------------------------------ */
 	TArray<FFinalSkinVertex> SkinnedVerts;
 	SkeletalMeshComp->GetCPUSkinnedVertices(SkinnedVerts, 0);
 	if (SkinnedVerts.IsEmpty())
 	{
-		UE_LOG(LogTemp, Error,
-			TEXT("[RME] 0 vértices retornados (Allow CPU Access?)."));
+		UE_LOG(LogTemp, Error, TEXT("[RME] 0 vÃ©rtices (Allow CPU Access?)."));
 		return;
 	}
 
-	/* -- 3) Gerar nome único --------------------------------------- */
+	/* ---------- 4) Nome de arquivo Ãºnico -------------------------- */
 	const FString BaseName = SkeletalMeshComp->GetName().IsEmpty()
 		? TEXT("Mesh") : SkeletalMeshComp->GetName();
 
-	IFileManager::Get().MakeDirectory(*DirectoryPath, /*Tree*/ true);
-
 	FString FileName = BaseName + TEXT(".obj");
-	FString FullPath = FPaths::Combine(DirectoryPath, FileName);
+	FString FullPath = FPaths::Combine(DownloadDir, FileName);
 	int32   Counter = 1;
 	while (FPaths::FileExists(FullPath))
 	{
 		FileName = FString::Printf(TEXT("%s_%d.obj"), *BaseName, Counter++);
-		FullPath = FPaths::Combine(DirectoryPath, FileName);
+		FullPath = FPaths::Combine(DownloadDir, FileName);
 	}
 
-	/* -- 4) Montar texto OBJ --------------------------------------- */
+	/* ---------- 5) Construir texto OBJ ---------------------------- */
 	FString Obj;
 	Obj.Reserve(SkinnedVerts.Num() * 32);
 
-	const FTransform& TM = SkeletalMeshComp->GetComponentTransform();
+	const FTransform& CompTM = SkeletalMeshComp->GetComponentTransform();
 
 	for (const FFinalSkinVertex& V : SkinnedVerts)
 	{
-		const FVector P = TM.TransformPosition(FVector(V.Position));
+		const FVector P = CompTM.TransformPosition(FVector(V.Position));
 		Obj += FString::Printf(TEXT("v %f %f %f\n"), P.X, P.Y, P.Z);
 	}
 
@@ -95,10 +100,10 @@ void URuntimeMeshExporterComponent::ExportToOBJ(
 			Idx->Get(i) + 1, Idx->Get(i + 1) + 1, Idx->Get(i + 2) + 1);
 	}
 
-	/* -- 5) Salvar -------------------------------------------------- */
+	/* ---------- 6) Salvar ----------------------------------------- */
 	if (FFileHelper::SaveStringToFile(Obj, *FullPath))
 	{
-		UE_LOG(LogTemp, Log, TEXT("[RME] OBJ salvo: %s"), *FullPath);
+		UE_LOG(LogTemp, Log, TEXT("[RME] OBJ salvo em: %s"), *FullPath);
 	}
 	else
 	{

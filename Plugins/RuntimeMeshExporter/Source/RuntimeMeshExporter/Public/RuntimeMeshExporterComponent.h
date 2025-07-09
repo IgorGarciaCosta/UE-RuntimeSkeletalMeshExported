@@ -21,12 +21,13 @@ class RUNTIMEMESHEXPORTER_API URuntimeMeshExporterComponent : public UActorCompo
 public:
 	URuntimeMeshExporterComponent();
 
-	/* Exporta 'SkeletalMeshComp' na pose atual para 'DirectoryPath'. */
-	UFUNCTION(BlueprintCallable, Category = "Runtime OBJ Export",
-		meta = (DefaultToSelf = "SkeletalMeshComp"))
-	void ExportToOBJ(USkeletalMeshComponent* SkeletalMeshComp,
-		const FString& DirectoryPath);
+	/* Caminho completo do arquivo .obj a gerar */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Runtime OBJ Export")
+	FString OutputPath = TEXT("D:/Temp/CurrentPose.obj");
 
+	/* Chame esta função para efetuar o export */
+	UFUNCTION(BlueprintCallable, Category = "Runtime OBJ Export")
+	void ExportToOBJ(USkeletalMeshComponent* SkeletalMeshComp);
 protected:
 	virtual void BeginPlay() override;
 };
