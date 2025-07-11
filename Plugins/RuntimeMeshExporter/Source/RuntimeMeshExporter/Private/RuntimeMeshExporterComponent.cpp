@@ -11,7 +11,7 @@
 #include "Misc/Paths.h"
 #include "HAL/FileManager.h"
 #include "Logging/LogMacros.h"
-#include "../../../../../Intermediate/ProjectFiles/RuntimeMeshExporterHelpers.h"
+#include "RuntimeMeshExporterHelpers.h"
 
 /*------------------------------------------------------------------*/
 URuntimeMeshExporterComponent::URuntimeMeshExporterComponent()
