@@ -21,9 +21,6 @@ class RUNTIMEMESHEXPORTER_API URuntimeMeshExporterComponent : public UActorCompo
 public:
 	URuntimeMeshExporterComponent();
 
-	/* Caminho completo do arquivo .obj a gerar */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Runtime OBJ Export")
-	FString OutputPath = TEXT("D:/Temp/CurrentPose.obj");
 
 	/* Chame esta função para efetuar o export */
 	UFUNCTION(BlueprintCallable, Category = "Runtime OBJ Export")
